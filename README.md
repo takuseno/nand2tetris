@@ -5,7 +5,7 @@ my study codes for "The Elements of Computing Systems".
 Section names are translated from Japanese version by me.
 
 - [x] 1. Boolean Algebra
-- [ ] 2. Boolean Arithmetic
+- [x] 2. Boolean Arithmetic
 - [ ] 3. Ordered Circuits
 - [ ] 4. Machine Language
 - [ ] 5. Computer Architecture
