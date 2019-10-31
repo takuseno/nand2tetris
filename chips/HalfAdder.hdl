@@ -1,0 +1,11 @@
+CHIP HalfAdder {
+    IN a, b;
+    OUT sum, carry;
+    PARTS:
+    Not(in=a, out=na);
+    Not(in=b, out=nb);
+    And(a=na, b=b, out=out1);
+    And(a=a, b=nb, out=out2);
+    Or(a=out1, b=out2, out=sum);
+    And(a=a, b=b, out=carry);
+}
