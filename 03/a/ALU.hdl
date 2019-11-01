@@ -1,0 +1,33 @@
+CHIP ALU {
+    IN x[16], y[16], zx, nx, zy, ny, f, no;
+    OUT out[16], zr, ng;
+    PARTS:
+    // process x
+    Mux16(a[0..15]=x, b[0..15]=false, sel=zx, out[0..15]=x1);
+    Not16(in[0..15]=x1, out[0..15]=nx1);
+    Mux16(a[0..15]=x1, b[0..15]=nx1, sel=nx, out[0..15]=x2);
+
+    // process y
+    Mux16(a[0..15]=y, b[0..15]=false, sel=zy, out[0..15]=y1);
+    Not16(in[0..15]=y1, out[0..15]=ny1);
+    Mux16(a[0..15]=y1, b[0..15]=ny1, sel=ny, out[0..15]=y2);
+
+    // calculate
+    And16(a[0..15]=x2, b[0..15]=y2, out[0..15]=andxy);
+    Add16(a[0..15]=x2, b[0..15]=y2, out[0..15]=addxy);
+    Mux16(a[0..15]=andxy, b[0..15]=addxy, sel=f, out[0..15]=res);
+
+    // process output
+    Not16(in[0..15]=res, out[0..15]=nres);
+    Mux16(a[0..15]=res, b[0..15]=nres, sel=no, out[0..15]=tmpout);
+    // bug work around
+    Not16(in[0..15]=tmpout, out[0..15]=ntmpout);
+    Not16(in[0..15]=ntmpout, out[0..15]=out);
+
+    // zero bits
+    Or16Way(in[0..15]=tmpout, out=nzr);
+    Not(in=nzr, out=zr);
+
+    // negative bit
+    Negative16Way(in[0..15]=tmpout, out=ng);
+}
