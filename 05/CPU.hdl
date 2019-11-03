@@ -39,5 +39,12 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+    Not(in=instruction[15], out=isa);
+    Not(in=isa, out=isc);
+
+    // A Register
+    Mux16(a[0..15]=inM, b[0..14]=instruction[0..14], sel=isa, out[0..15]=amuxout);
+    And(a=isc, b=instruction[5], out=awrite);
+    Or(a=isa, b=awrite, out=aload);
+    ARegister(in[0..15]=amuxout, load=aload, out[0..15]=aout);
 }
