@@ -43,8 +43,48 @@ CHIP CPU {
     Not(in=isa, out=isc);
 
     // A Register
-    Mux16(a[0..15]=inM, b[0..14]=instruction[0..14], sel=isa, out[0..15]=amuxout);
+    And(a=isc, b=instruction[5], out=usealuout);
+    Mux16(a[0..14]=instruction[0..14], b[0..15]=aluout, sel=usealuout, out[0..15]=aluinstout);
     And(a=isc, b=instruction[5], out=awrite);
     Or(a=isa, b=awrite, out=aload);
-    ARegister(in[0..15]=amuxout, load=aload, out[0..15]=aout);
+    ARegister(in[0..15]=aluinstout, load=aload, out[0..15]=aout, out[0..14]=addressM);
+
+    // A Register or Memory
+    Mux16(a[0..15]=aout, b[0..15]=inM, sel=instruction[12], out=mout);
+
+    // ALU
+    And(a=instruction[4], b=isc, out=dload);
+    DRegister(in[0..15]=din, load=dload, out[0..15]=dout);
+    ALU(
+        x[0..15]=dout,
+        y[0..15]=mout,
+        zx=instruction[11],
+        nx=instruction[10],
+        zy=instruction[9],
+        ny=instruction[8],
+        f=instruction[7],
+        no=instruction[6],
+        out[0..15]=aluout,
+        out[0..15]=din,
+        out[0..15]=outM,
+        zr=aluzr,
+        ng=alung
+    );
+
+    // connect to writeM
+    And(a=instruction[3], b=isc, out=writeM);
+
+    // PC
+    Not(in=alung, out=alups);
+    Not(in=aluzr, out=alunonzr);
+    And(a=alunonzr, b=alups, out=gt);
+    And(a=alunonzr, b=alung, out=lt);
+    And(a=instruction[0], b=gt, out=jgt);
+    And(a=instruction[1], b=aluzr, out=eq);
+    And(a=instruction[2], b=lt, out=jlt);
+    Or(a=jgt, b=eq, out=tmpjmpcond);
+    Or(a=tmpjmpcond, b=jlt, out=tmpjmpcond2);
+    And(a=isc, b=tmpjmpcond2, out=jmpcond);
+    Not(in=jmpcond, out=inc);
+    PC(in[0..15]=aout, load=jmpcond, reset=reset, inc=inc, out[0..14]=pc);
 }
