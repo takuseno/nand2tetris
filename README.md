@@ -9,7 +9,7 @@ Section names are translated from Japanese version by me.
 - [x] 3. Ordered Circuits
 - [x] 4. Machine Language
 - [x] 5. Computer Architecture
-- [ ] 6. Assembler
+- [x] 6. Assembler
 - [ ] 7. Virtual Machine 1
 - [ ] 8. Virtual Machine 2
 - [ ] 9. High-level Language
