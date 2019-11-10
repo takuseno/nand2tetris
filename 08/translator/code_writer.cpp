@@ -241,12 +241,11 @@ void CodeWriter::write_call(std::string function_name, int num_args) {
 }
 
 void CodeWriter::write_return() {
-    // set return value
+    // set return value at R13
     fprintf(fp_, "@SP\n");
     fprintf(fp_, "A=M-1\n");
     fprintf(fp_, "D=M\n");
-    fprintf(fp_, "@ARG\n");
-    fprintf(fp_, "A=M\n");
+    fprintf(fp_, "@R13\n");
     fprintf(fp_, "M=D\n");
     // restore stack pointer
     fprintf(fp_, "@ARG\n");
@@ -289,8 +288,19 @@ void CodeWriter::write_return() {
     fprintf(fp_, "M=D\n");
     fprintf(fp_, "@R15\n");
     fprintf(fp_, "M=M-1\n");
-    // return
+    // set return address at R14
     fprintf(fp_, "A=M\n");
+    fprintf(fp_, "D=M\n");
+    fprintf(fp_, "@R14\n");
+    fprintf(fp_, "M=D\n");
+    // restore return value from R13
+    fprintf(fp_, "@R13\n");
+    fprintf(fp_, "D=M\n");
+    fprintf(fp_, "@SP\n");
+    fprintf(fp_, "A=M-1\n");
+    fprintf(fp_, "M=D\n");
+    // jump
+    fprintf(fp_, "@R14\n");
     fprintf(fp_, "A=M\n");
     fprintf(fp_, "0;JMP\n");
 }
