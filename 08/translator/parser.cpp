@@ -16,23 +16,33 @@ void Parser::advance() {
             next_line_ = "";
             break;
         }
-        // remove spaces
+        // remove comments
+        int pos = tmp.find("//");
+        if (pos != std::string::npos) {
+            tmp = tmp.substr(0, pos);
+        }
+        // remove spaces from head and tail
         std::string without_spaces = "";
-        for (int i = 0; i < tmp.size(); ++i)
-            if (tmp[i] != ' ' && tmp[i] != '\n' && tmp[i] != '\r')
+        bool is_started = false;
+        int last_character_pos = -1;
+        for (int i = 0; i < tmp.size(); ++i) {
+            if (!is_started and tmp[i] != ' ')
+                is_started = true;
+            if (!is_started)
+                continue;
+            if (tmp[i] != '\n' && tmp[i] != '\r') {
                 without_spaces += tmp.substr(i, 1);
-        tmp = without_spaces;
+                if (tmp[i] != ' ')
+                    last_character_pos = i;
+            }
+        }
+        tmp = without_spaces.substr(0, last_character_pos + 1);
         // skip if empty
         if (tmp.empty())
             continue;
         // skip if comments
         if (tmp.substr(0, 2) == "//")
             continue;
-        // remove comments
-        int pos = tmp.find("//");
-        if (pos != std::string::npos) {
-            tmp = tmp.substr(0, pos);
-        }
         next_line_ = tmp;
         break;
     }
@@ -57,51 +67,36 @@ std::string extract_until_number(std::string str, int offset) {
     throw std::runtime_error("extract_until_number error");
 }
 
+std::vector<std::string> break_into_blocks(std::string str) {
+    std::vector<std::string> blocks;
+    std::string tmp = "";
+    for (int i = 0; i < str.size(); ++i) {
+        if (str[i] == ' ') {
+            if (!tmp.empty())
+                blocks.push_back(tmp);
+            tmp = "";
+            continue;
+        }
+        tmp += str[i];
+    }
+    if (!tmp.empty())
+        blocks.push_back(tmp);
+    return blocks;
+}
+
 std::string Parser::arg1() {
     if (command_type() == C_RETURN)
         throw std::runtime_error((current_line_ + " arg1 error").c_str());
-    switch (command_type()) {
-        case C_ARITHMETIC:
-            return current_line_;
-        case C_LABEL:
-            return current_line_.substr(5, current_line_.size() - 5);
-        case C_GOTO:
-            return current_line_.substr(4, current_line_.size() - 4);
-        case C_IF:
-            return current_line_.substr(7, current_line_.size() - 7);
-    }
-    switch (command_type()) {
-        case C_PUSH:
-            return extract_until_number(current_line_, 4);
-        case C_POP:
-            return extract_until_number(current_line_, 3);
-        case C_FUNCTION:
-            return extract_until_number(current_line_, 7);
-        case C_CALL:
-            return extract_until_number(current_line_, 4);
-    }
-    throw std::runtime_error("arg1 command_type error");
+    std::vector<std::string> blocks = break_into_blocks(current_line_);
+    if (command_type() == C_ARITHMETIC)
+        return blocks.at(0);
+    return blocks.at(1);
 }
 
 int Parser::arg2() {
-    int offset;
-    switch (command_type()) {
-        case C_PUSH:
-            offset = 4;
-            break;
-        case C_POP:
-            offset = 3;
-            break;
-        case C_FUNCTION:
-            offset = 7;
-            break;
-        case C_CALL:
-            offset = 4;
-            break;
-        default:
-            throw std::runtime_error("arg2 command_type error");
-    }
-    std::string operand = arg1();
-    int i = offset + operand.size();
-    return atoi(current_line_.substr(i, current_line_.size() - i).c_str());
+    if (command_type() != C_PUSH && command_type() != C_POP
+            && command_type() != C_FUNCTION && command_type() != C_CALL)
+        throw std::runtime_error("arg2 error");
+    std::vector<std::string> blocks = break_into_blocks(current_line_);
+    return atoi(blocks.at(2).c_str());
 }

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <exception>
 #include <stdexcept>
+#include <vector>
 
 #define C_ARITHMETIC 0
 #define C_PUSH 1
@@ -17,6 +18,7 @@
 class Parser {
 public:
     Parser(const char* path);
+    ~Parser() { ifs_.close(); }
     bool has_more_commands();
     void advance();
     int command_type();

@@ -24,6 +24,7 @@ private:
     FILE *fp_;
     int num_branches_, num_calls_;
     std::string file_name_;
+    std::string current_function_;
     std::vector<std::string> input_files_;
     std::string convert_segment(std::string segment, int index);
     void push_symbol(std::string symbol, bool direct);
