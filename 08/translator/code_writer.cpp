@@ -37,9 +37,9 @@ void CodeWriter::write_arithmetic(std::string command) {
         else if (command == "sub")
             fprintf(fp_, "D=M-D\n"); // x = x - y
         else if (command == "and")
-            fprintf(fp_, "D=M&D\n"); // x = x & y
+            fprintf(fp_, "D=D&M\n"); // x = x & y
         else if (command == "or")
-            fprintf(fp_, "D=M|D\n"); // x = x | y
+            fprintf(fp_, "D=D|M\n"); // x = x | y
         fprintf(fp_, "@SP\n");
         fprintf(fp_, "A=M\n");
         fprintf(fp_, "A=A-1\n");
