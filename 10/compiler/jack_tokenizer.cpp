@@ -69,36 +69,34 @@ void JackTokenizer::advance() {
         return;
 
     // skip to next head
-    char prev_ch = '\0';
+    char ch = ifs_.get();
     while (!ifs_.eof()) {
-        char ch = ifs_.get();
+        char next_ch = ifs_.get();
         if (ch == ' ' || ch == '\n' || ch == '\r') {
-            prev_ch = '\0';
+            ch = next_ch;
             continue;
         }
         // skip to end of line
-        if (prev_ch == '/' && ch == '/') {
+        if (ch == '/' && next_ch == '/') {
             while (!ifs_.eof())
                 if (ifs_.get() == '\n')
                     break;
-            prev_ch = '\0';
+            ch = ifs_.get();
             continue;
         }
         // skip to end of comment
-        if (prev_ch == '/' && ch == '*') {
-            prev_ch = ' ';
+        if (ch == '/' && next_ch == '*') {
+            ch = '\0';
             while (!ifs_.eof()) {
-                ch = ifs_.get();
-                if (prev_ch == '*' && ch == '/')
+                next_ch = ifs_.get();
+                if (ch == '*' && next_ch == '/')
                     break;
-                prev_ch = ch;
+                ch = next_ch;
             }
-            prev_ch = '\0';
+            ch = ifs_.get();
             continue;
         }
-        if (prev_ch != '\0')
-            break;
-        prev_ch = ch;
+        break;
     }
     if (ifs_.eof())
         return;
@@ -113,14 +111,16 @@ void JackTokenizer::advance() {
         next_token_type_ = STRING_CONST;
     } else if (head_ch >= '0' && head_ch <= '9') { // int const
         char tmp;
+        next_token_ += head_ch;
         while ((tmp = ifs_.get()) >= '0' && tmp <= '9')
             next_token_ += tmp;
         ifs_.unget();
         next_token_type_ = INT_CONST;
     } else if (is_symbol(head_ch)) { // symbol
-        next_token_type_ += head_ch;
+        next_token_ += head_ch;
         next_token_type_ = SYMBOL;
     } else { // keyword or identifier
+        next_token_ += head_ch;
         char tmp;
         while ((tmp = ifs_.get()) != ' ' && !is_symbol(tmp))
             next_token_ += tmp;
@@ -140,6 +140,12 @@ int JackTokenizer::keyword() {
     if (token_type() != KEYWORD)
         throw std::runtime_error(current_token_ + " is not a keyword type");
     return is_keyword(current_token_);
+}
+
+std::string JackTokenizer::keyword_as_string() {
+    if (token_type() != KEYWORD)
+        throw std::runtime_error(current_token_ + " is not a keyword type");
+    return current_token_;
 }
 
 std::string JackTokenizer::symbol() {

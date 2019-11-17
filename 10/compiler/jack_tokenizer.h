@@ -41,6 +41,7 @@ public:
     void advance();
     int token_type();
     int keyword();
+    std::string keyword_as_string();
     std::string symbol();
     std::string identifier();
     int int_val();
