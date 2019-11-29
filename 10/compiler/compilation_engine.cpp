@@ -36,7 +36,7 @@ void CompilationEngine::compileClass() {
     // subroutines and variable declarations
     while (tokenizer_->has_more_tokens()) {
         tokenizer_->advance();
-        if (tokenizer_->keyword() == METHOD || tokenizer_->keyword() == CONSTRUCTOR) {
+        if (tokenizer_->keyword() == METHOD || tokenizer_->keyword() == CONSTRUCTOR || tokenizer_->keyword() == FUNCTION) {
             compileSubroutine();
         } else if (tokenizer_->keyword() == FIELD || tokenizer_->keyword() == STATIC) {
             compileClassVarDec();
@@ -44,6 +44,12 @@ void CompilationEngine::compileClass() {
             throw std::runtime_error("compileClass: should be method or field");
         }
     }
+
+    // close curly brace
+    tokenizer_->advance();
+    if (tokenizer_->token_type() != SYMBOL || tokenizer_->symbol() != "}")
+        throw std::runtime_error("compileClass: should be }");
+    fprintf(fp_, "<symbol>}</symbol>\n");
 
     fprintf(fp_, "</class>\n");
 }
@@ -60,9 +66,12 @@ void CompilationEngine::compileClassVarDec() {
 
     // type
     tokenizer_->advance();
-    if (!is_type(tokenizer_->keyword()))
+    if (tokenizer_->token_type() == IDENTIFIER)
+        fprintf(fp_, "<identifier>%s</identifier>\n", tokenizer_->identifier().c_str());
+    else if (tokenizer_->token_type() == KEYWORD && is_type(tokenizer_->keyword()))
+        fprintf(fp_, "<keyword>%s</keyword>\n", tokenizer_->keyword_as_string().c_str());
+    else
         throw std::runtime_error("compileClassVarDec: should be type");
-    fprintf(fp_, "<keyword>%s</keyword>\n", tokenizer_->keyword_as_string().c_str());
 
     // variable names
     while (true) {
@@ -88,21 +97,21 @@ void CompilationEngine::compileClassVarDec() {
 void CompilationEngine::compileSubroutine() {
     fprintf(fp_, "<subroutineDec>\n");
 
-    if (tokenizer_->keyword() == METHOD) {
+    if (tokenizer_->keyword() == METHOD)
         fprintf(fp_, "<keyword>method</keyword>\n");
-    } else if (tokenizer_->keyword() == CONSTRUCTOR) {
+    else if (tokenizer_->keyword() == CONSTRUCTOR)
         fprintf(fp_, "<keyword>constructor</keyword>\n");
-    }
+    else if (tokenizer_->keyword() == FUNCTION)
+        fprintf(fp_, "<keyword>function</keyword>\n");
 
     // type name
     tokenizer_->advance();
-    if (tokenizer_->token_type() == KEYWORD && is_type(tokenizer_->keyword())) {
+    if (tokenizer_->token_type() == KEYWORD && is_type(tokenizer_->keyword()))
         fprintf(fp_, "<keyword>%s</keyword>\n", tokenizer_->keyword_as_string().c_str());
-    } else if (tokenizer_->token_type() == IDENTIFIER) {
+    else if (tokenizer_->token_type() == IDENTIFIER)
         fprintf(fp_, "<identifier>%s</identifier>\n", tokenizer_->identifier().c_str());
-    } else {
+    else
         throw std::runtime_error("compileSubroutine: should be type name");
-    }
 
     // method name
     tokenizer_->advance();
@@ -117,6 +126,7 @@ void CompilationEngine::compileSubroutine() {
     fprintf(fp_, "<symbol>(</symbol>\n");
 
     // parameter list
+    tokenizer_->advance();
     fprintf(fp_, "<parameterList>\n");
     compileParameterList();
     fprintf(fp_, "</parameterList>\n");
@@ -191,13 +201,12 @@ void CompilationEngine::compileVarDec() {
 
     // type
     tokenizer_->advance();
-    if (tokenizer_->token_type() == KEYWORD && is_type(tokenizer_->keyword())) {
+    if (tokenizer_->token_type() == KEYWORD && is_type(tokenizer_->keyword()))
         fprintf(fp_, "<keyword>%s</keyword>\n", tokenizer_->keyword_as_string().c_str());
-    } else if (tokenizer_->token_type() == IDENTIFIER) {
+    else if (tokenizer_->token_type() == IDENTIFIER)
         fprintf(fp_, "<identifier>%s</identifier>\n", tokenizer_->identifier().c_str());
-    } else {
+    else
         throw std::runtime_error("compileVarDec: should be type name");
-    }
 
     while (true) {
         tokenizer_->advance();
@@ -225,14 +234,18 @@ void CompilationEngine::compileStatements() {
 
     fprintf(fp_, "<statements>\n");
 
-    if (tokenizer_->keyword() == LET) {
-        compileLet();
-    } else if (tokenizer_->keyword() == IF) {
-        compileIf();
-    } else if (tokenizer_->keyword() == WHILE) {
-        compileWhile();
-    } else if (tokenizer_->keyword() == DO) {
-        compileDo();
+    while (true) {
+        if (tokenizer_->token_type() == SYMBOL && tokenizer_->symbol() == "}")
+            break;
+        else if (tokenizer_->keyword() == LET)
+            compileLet();
+        else if (tokenizer_->keyword() == IF)
+            compileIf();
+        else if (tokenizer_->keyword() == WHILE)
+            compileWhile();
+        else if (tokenizer_->keyword() == DO)
+            compileDo();
+        tokenizer_->advance();
     }
 
     fprintf(fp_, "</statements>\n");
@@ -331,37 +344,38 @@ void CompilationEngine::compileTerm() {
     // value
     tokenizer_->advance();
     tmp_token_type_ = tokenizer_->token_type();
-    if (tmp_token_type_ == INT_CONST) {
-        tmp_int_val_ = tokenizer_->int_val();
-        tokenizer_->advance();
-        if (tokenizer_->token_type() == SYMBOL && tokenizer_->symbol() == ";") {
-            fprintf(fp_, "<integerConstant>%d</integerConstant>\n", tmp_int_val_);
-        } else {
-            compileExpression();
-        }
-    } else if (tmp_token_type_ == STRING_CONST) {
-        tmp_token_ = tokenizer_->string_val();
-        tokenizer_->advance();
-        if (tokenizer_->token_type() == SYMBOL && tokenizer_->symbol() == ";") {
-            fprintf(fp_, "<stringConstant>%s</stringConstant>\n", tmp_token_.c_str());
-        } else {
-            throw std::runtime_error("compileLet: should be ;");
-        }
-    } else if (tmp_token_type_ == IDENTIFIER) {
-        tmp_token_ = tokenizer_->identifier();
-        tokenizer_->advance();
-        if (tokenizer_->token_type() == SYMBOL && tokenizer_->symbol() == ";") {
-            fprintf(fp_, "<identifier>%s</identifier>\n", tmp_token_.c_str());
-        } else {
-            compileExpression();
-        }
-    } else if (tmp_token_type_ == SYMBOL && tokenizer_->symbol() == "(") {
-        tmp_token_ = tokenizer_->identifier();
-        tokenizer_->advance();
-        compileExpression();
-    } else {
-        throw std::runtime_error("compileLet: should be valid value");
-    }
+
+    //if (tmp_token_type_ == INT_CONST) {
+    //    tmp_int_val_ = tokenizer_->int_val();
+    //    tokenizer_->advance();
+    //    if (tokenizer_->token_type() == SYMBOL && tokenizer_->symbol() == ";") {
+    //        fprintf(fp_, "<integerConstant>%d</integerConstant>\n", tmp_int_val_);
+    //    } else {
+    //        compileExpression();
+    //    }
+    //} else if (tmp_token_type_ == STRING_CONST) {
+    //    tmp_token_ = tokenizer_->string_val();
+    //    tokenizer_->advance();
+    //    if (tokenizer_->token_type() == SYMBOL && tokenizer_->symbol() == ";") {
+    //        fprintf(fp_, "<stringConstant>%s</stringConstant>\n", tmp_token_.c_str());
+    //    } else {
+    //        throw std::runtime_error("compileLet: should be ;");
+    //    }
+    //} else if (tmp_token_type_ == IDENTIFIER) {
+    //    tmp_token_ = tokenizer_->identifier();
+    //    tokenizer_->advance();
+    //    if (tokenizer_->token_type() == SYMBOL && tokenizer_->symbol() == ";") {
+    //        fprintf(fp_, "<identifier>%s</identifier>\n", tmp_token_.c_str());
+    //    } else {
+    //        compileExpression();
+    //    }
+    //} else if (tmp_token_type_ == SYMBOL && tokenizer_->symbol() == "(") {
+    //    tmp_token_ = tokenizer_->identifier();
+    //    tokenizer_->advance();
+    //    compileExpression();
+    //} else {
+    //    throw std::runtime_error("compileLet: should be valid value");
+    //}
 }
 
 void CompilationEngine::compileExpressionList() {
