@@ -341,41 +341,56 @@ void CompilationEngine::compileExpression() {
 }
 
 void CompilationEngine::compileTerm() {
+    fprintf(fp_, "<term>\n");
     // value
     tokenizer_->advance();
-    tmp_token_type_ = tokenizer_->token_type();
+    int tmp_token_type = tokenizer_->token_type();
 
-    //if (tmp_token_type_ == INT_CONST) {
-    //    tmp_int_val_ = tokenizer_->int_val();
-    //    tokenizer_->advance();
-    //    if (tokenizer_->token_type() == SYMBOL && tokenizer_->symbol() == ";") {
-    //        fprintf(fp_, "<integerConstant>%d</integerConstant>\n", tmp_int_val_);
-    //    } else {
-    //        compileExpression();
-    //    }
-    //} else if (tmp_token_type_ == STRING_CONST) {
-    //    tmp_token_ = tokenizer_->string_val();
-    //    tokenizer_->advance();
-    //    if (tokenizer_->token_type() == SYMBOL && tokenizer_->symbol() == ";") {
-    //        fprintf(fp_, "<stringConstant>%s</stringConstant>\n", tmp_token_.c_str());
-    //    } else {
-    //        throw std::runtime_error("compileLet: should be ;");
-    //    }
-    //} else if (tmp_token_type_ == IDENTIFIER) {
-    //    tmp_token_ = tokenizer_->identifier();
-    //    tokenizer_->advance();
-    //    if (tokenizer_->token_type() == SYMBOL && tokenizer_->symbol() == ";") {
-    //        fprintf(fp_, "<identifier>%s</identifier>\n", tmp_token_.c_str());
-    //    } else {
-    //        compileExpression();
-    //    }
-    //} else if (tmp_token_type_ == SYMBOL && tokenizer_->symbol() == "(") {
-    //    tmp_token_ = tokenizer_->identifier();
-    //    tokenizer_->advance();
-    //    compileExpression();
-    //} else {
-    //    throw std::runtime_error("compileLet: should be valid value");
-    //}
+    if (tmp_token_type == INT_CONST) {
+        fprintf(fp_, "<integerConstant>\n");
+        fprintf(fp_, "%d\n", tokenizer_->int_val());
+        fprintf(fp_, "</integerConstant>\n");
+    } else if (tmp_token_type == STRING_CONST) {
+        fprintf(fp_, "<stringConstant>\n");
+        fprintf(fp_, "%s\n", tokenizer_->string_val().c_str());
+        fprintf(fp_, "</stringConstant>\n");
+    } else if (tmp_token_type == IDENTIFIER) {
+        std::string identifier = tokenizer_->identifier();
+        tokenizer_->advance();
+        int token_type = tokenizer_->token_type();
+        if (token_type == SYMBOL && tokenizer_->symbol() == "[") {
+            // varName[expression]
+            fprintf(fp_, "<identifier>%s</identifier>\n", identifier.c_str());
+            fprintf(fp_, "<symbol>[</symbol>\n");
+            compileExpression();
+            fprintf(fp_, "<symbol>]</symbol>\n");
+        } else if (token_type == SYMBOL && tokenizer_->symbol() == "(") {
+            // subroutineCall
+            fprintf(fp_, "<identifier>%s</identifier>\n", identifier.c_str());
+            fprintf(fp_, "<symbol>(</symbol>\n");
+            compileSubroutine();
+        } else {
+            // varName
+            fprintf(fp_, "<identifier>%s</identifier>\n", identifier.c_str());
+        }
+    } else if (tmp_token_type == SYMBOL) {
+        if (tokenizer_->symbol() == "(") {
+            // (expression)
+            fprintf(fp_, "<symbol>(</symbol>\n");
+            compileExpression();
+            fprintf(fp_, "<symbol>)</symbol>\n");
+        } else if (tokenizer_->symbol() == "-" || tokenizer_->symbol() == "~") {
+            // unaryOp term
+            fprintf(fp_, "<symbol>%s</symbol>\n", tokenizer_->symbol().c_str());
+            compileTerm();
+        } else {
+            throw std::runtime_error("compileTerm: should be + or ~");
+        }
+    } else {
+        throw std::runtime_error("compileTerm: invalid");
+    }
+
+    fprintf(fp_, "</term>\n");
 }
 
 void CompilationEngine::compileExpressionList() {
