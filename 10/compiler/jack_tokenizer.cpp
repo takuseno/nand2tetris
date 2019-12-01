@@ -6,6 +6,8 @@ bool is_symbol(char ch) {
         case ')':
         case '{':
         case '}':
+        case '[':
+        case ']':
         case ';':
         case ',':
         case '.':

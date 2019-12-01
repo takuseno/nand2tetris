@@ -26,7 +26,7 @@ private:
     JackTokenizer *tokenizer_;
     FILE *fp_;
     int tmp_token_type_;
-    std::string tmp_token_;
+    std::string tmp_string_;
     int tmp_int_val_;
-    void compileValueOrExpression(std::string terminal);
+    void compileSubroutineCall(std::string identifier);
 };
