@@ -12,8 +12,8 @@ Section names are translated from Japanese version by me.
 - [x] 6. Assembler
 - [x] 7. Virtual Machine 1
 - [x] 8. Virtual Machine 2
-- [ ] 9. High-level Language
-- [ ] 10. Compiler 1
+- [x] 9. High-level Language
+- [x] 10. Compiler 1
 - [ ] 11. Compiler 2
 - [ ] 12. Operating System
 - [ ] 13. Beyond 
