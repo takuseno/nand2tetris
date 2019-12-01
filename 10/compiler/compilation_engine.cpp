@@ -201,7 +201,7 @@ void CompilationEngine::compileParameterList() {
 
 void CompilationEngine::compileVarDec() {
     fprintf(fp_, "<varDec>\n");
-    fprintf(fp_, "<keyword>var</keyword>");
+    fprintf(fp_, "<keyword>var</keyword>\n");
 
     // type
     tokenizer_->advance();
@@ -467,34 +467,22 @@ void CompilationEngine::compileTerm() {
     int tmp_token_type = tokenizer_->token_type();
 
     if (tmp_token_type == INT_CONST) {
-        fprintf(fp_, "<integerConstant>\n");
-        fprintf(fp_, "%d\n", tokenizer_->int_val());
-        fprintf(fp_, "</integerConstant>\n");
+        fprintf(fp_, "<integerConstant>%d</integerConstant>\n", tokenizer_->int_val());
         tokenizer_->advance();
     } else if (tmp_token_type == STRING_CONST) {
-        fprintf(fp_, "<stringConstant>\n");
-        fprintf(fp_, "%s\n", tokenizer_->string_val().c_str());
-        fprintf(fp_, "</stringConstant>\n");
+        fprintf(fp_, "<stringConstant>%s</stringConstant>\n", tokenizer_->string_val().c_str());
         tokenizer_->advance();
     } else if (tmp_token_type == KEYWORD) {
-        fprintf(fp_, "<keywordConstant>\n");
         switch (tokenizer_->keyword()) {
             case TRUE:
-                fprintf(fp_, "true\n");
-                break;
             case FALSE:
-                fprintf(fp_, "false\n");
-                break;
             case _NULL:
-                fprintf(fp_, "null\n");
-                break;
             case THIS:
-                fprintf(fp_, "this\n");
                 break;
             default:
                 throw std::runtime_error("compileTerm: invalid keyword");
         }
-        fprintf(fp_, "</keywordConstant>\n");
+        fprintf(fp_, "<keywordConstant>%s</keywordConstant>\n", tokenizer_->keyword_as_string().c_str());
         tokenizer_->advance();
     } else if (tmp_token_type == IDENTIFIER) {
         std::string identifier = tokenizer_->identifier();
@@ -553,7 +541,6 @@ void CompilationEngine::compileExpressionList() {
 }
 
 void CompilationEngine::compileSubroutineCall(std::string identifier) {
-    fprintf(fp_, "<subroutineCall>\n");
     fprintf(fp_, "<identifier>%s</identifier>\n", identifier.c_str());
 
     if (tokenizer_->symbol() == "(") {
@@ -583,5 +570,4 @@ void CompilationEngine::compileSubroutineCall(std::string identifier) {
     }
 
     tokenizer_->advance();
-    fprintf(fp_, "</subroutineCall>\n");
 }
