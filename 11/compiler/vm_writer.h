@@ -3,14 +3,14 @@
 #include <stdlib.h>
 
 // segment
-#define CONST 0
-#define ARG 1
-#define LOCAL 2
-#define STATIC 3
-#define THIS 4
-#define THAT 5
-#define POINTER 6
-#define TEMP 7
+#define VM_CONST 0
+#define VM_ARG 1
+#define VM_LOCAL 2
+#define VM_STATIC 3
+#define VM_THIS 4
+#define VM_THAT 5
+#define VM_POINTER 6
+#define VM_TEMP 7
 
 // command
 #define ADD 0
@@ -25,7 +25,7 @@
 
 class VMWriter {
 public:
-    VMWriter();
+    VMWriter(const char* path);
     void writePush(int segment, int index);
     void writePop(int segment, int index);
     void writeArithmetic(int command);

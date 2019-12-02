@@ -1,33 +1,34 @@
 #include "vm_writer.h"
 
-VMWriter::VMWriter() {
-
+VMWriter::VMWriter(const char* path) {
+    if ((fp_ = fopen(path, "w")) == NULL)
+        throw std::runtime_error("VMWriter: failed to open file");
 }
 
 void VMWriter::writePush(int segment, int index) {
     switch (segment) {
-        case CONST:
+        case VM_CONST:
             fprintf(fp_, "push const %d\n", index);
             break;
-        case ARG:
+        case VM_ARG:
             fprintf(fp_, "push argument %d\n", index);
             break;
-        case LOCAL:
+        case VM_LOCAL:
             fprintf(fp_, "push local %d\n", index);
             break;
-        case STATIC:
+        case VM_STATIC:
             fprintf(fp_, "push static %d\n", index);
             break;
-        case THIS:
+        case VM_THIS:
             fprintf(fp_, "push this %d\n", index);
             break;
-        case THAT:
+        case VM_THAT:
             fprintf(fp_, "push that %d\n", index);
             break;
-        case POINTER:
+        case VM_POINTER:
             fprintf(fp_, "push pointer %d\n", index);
             break;
-        case TEMP:
+        case VM_TEMP:
             fprintf(fp_, "push temp %d\n", index);
             break;
     }
@@ -36,28 +37,28 @@ void VMWriter::writePush(int segment, int index) {
 
 void VMWriter::writePop(int segment, int index) {
     switch (segment) {
-        case CONST:
+        case VM_CONST:
             fprintf(fp_, "pop const %d\n", index);
             break;
-        case ARG:
+        case VM_ARG:
             fprintf(fp_, "pop argument %d\n", index);
             break;
-        case LOCAL:
+        case VM_LOCAL:
             fprintf(fp_, "pop local %d\n", index);
             break;
-        case STATIC:
+        case VM_STATIC:
             fprintf(fp_, "pop static %d\n", index);
             break;
-        case THIS:
+        case VM_THIS:
             fprintf(fp_, "pop this %d\n", index);
             break;
-        case THAT:
+        case VM_THAT:
             fprintf(fp_, "pop that %d\n", index);
             break;
-        case POINTER:
+        case VM_POINTER:
             fprintf(fp_, "pop pointer %d\n", index);
             break;
-        case TEMP:
+        case VM_TEMP:
             fprintf(fp_, "pop temp %d\n", index);
             break;
     }
