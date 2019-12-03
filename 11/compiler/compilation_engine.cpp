@@ -8,6 +8,26 @@ bool is_type(int keyword) {
     else return false;
 }
 
+void CompilationEngine::writePushWithVar(std::string identifier) {
+    int index = table_->indexOf(identifier);
+    switch (table_->kindOf(identifier)) {
+        case TB_VAR:
+            writer_->writePush(VM_LOCAL, index);
+            break;
+        case TB_ARG:
+            writer_->writePush(VM_ARG, index);
+            break;
+        case TB_FIELD:
+            writer_->writePush(VM_THIS, index);
+            break;
+        case TB_STATIC:
+            writer_->writePush(VM_STATIC, index);
+            break;
+        default:
+            throw std::runtime_error("writePushWithVar: invalid kind");
+    }
+}
+
 CompilationEngine::CompilationEngine(JackTokenizer *tokenizer, const char* path) {
     tokenizer_ = tokenizer;
     writer_ = new VMWriter(path);
@@ -127,20 +147,26 @@ void CompilationEngine::compileSubroutine() {
     if (tokenizer_->symbol() != "{")
         throw std::runtime_error("compileSubroutine: should be {");
 
-    bool is_statement_started = false;
     while (true) {
         tokenizer_->advance();
         if (tokenizer_->token_type() == KEYWORD) {
             if (tokenizer_->keyword() == VAR) {
                 compileVarDec();
             } else {
-                // assume the first statement comes after all variable declarations
-                if (!is_statement_started) {
-                    int n_locals = table_->varCount(TB_VAR);
-                    writer_->writeFunction(class_name_ + "." + subroutine_name, n_locals);
+                int n_locals = table_->varCount(TB_VAR);
+                writer_->writeFunction(class_name_ + "." + subroutine_name, n_locals);
+                if (subroutine_type == CONSTRUCTOR) {
+                    // memory allocation for constructor
+                    writer_->writeCall("Memory.alloc", table_->varCount(TB_FIELD));
+                    // set allocated memory to THIS
+                    writer_->writePop(VM_POINTER, 0);
+                } else {
+                    // the first argument is THIS address
+                    writer_->writePush(VM_ARG, 0);
+                    // set pointer to THIS
+                    writer_->writePop(VM_POINTER, 0);
                 }
                 compileStatements();
-                is_statement_started = true;
             }
         } else if (tokenizer_->token_type() == SYMBOL && tokenizer_->symbol() == "}") {
             break;
@@ -317,7 +343,7 @@ void CompilationEngine::compileWhile() {
     tokenizer_->advance();
     compileExpression();
 
-    writer_->writeIf("WhileContinue" + std::to_string(while_count_));
+    writer_->writeIf("WhileEnd" + std::to_string(while_count_));
 
     // close bracket
     if (tokenizer_->symbol() != ")")
@@ -327,10 +353,6 @@ void CompilationEngine::compileWhile() {
     tokenizer_->advance();
     if (tokenizer_->symbol() != "{")
         throw std::runtime_error("compileWhile: should be {");
-
-    writer_->writeGoto("WhileEnd" + std::to_string(while_count_));
-
-    writer_->writeLabel("WhileContinue" + std::to_string(while_count_));
 
     tokenizer_->advance();
     compileStatements();
@@ -350,7 +372,12 @@ void CompilationEngine::compileWhile() {
 
 void CompilationEngine::compileReturn() {
     tokenizer_->advance();
-    compileExpression();
+
+    // void
+    if (tokenizer_->token_type() && tokenizer_->symbol() == ";")
+        writer_->writePush(VM_CONST, 0);
+    else
+        compileExpression();
 
     if (tokenizer_->symbol() != ";")
         throw std::runtime_error("compileReturn: should be ;");
@@ -373,16 +400,12 @@ void CompilationEngine::compileIf() {
     if (tokenizer_->symbol() != ")")
         throw std::runtime_error("compileIf: should be )");
 
-    writer_->writeIf("IfContinue" + std::to_string(if_count_));
-
-    writer_->writeGoto("IfEnd" + std::to_string(if_count_));
+    writer_->writeIf("IfEnd" + std::to_string(if_count_));
 
     // open curly brace
     tokenizer_->advance();
     if (tokenizer_->symbol() != "{")
         throw std::runtime_error("compileIf: should be {");
-
-    writer_->writeLabel("IfContinue" + std::to_string(if_count_));
 
     tokenizer_->advance();
     compileStatements();
@@ -396,7 +419,7 @@ void CompilationEngine::compileIf() {
     if (tokenizer_->token_type() == KEYWORD && tokenizer_->keyword() == ELSE) {
         // open curly brace
         tokenizer_->advance();
-        if (!tokenizer_->symbol() == "{")
+        if (tokenizer_->symbol() != "{")
             throw std::runtime_error("compileIf: (else) should be {");
 
         writer_->writeLabel("IfEnd" + std::to_string(if_count_));
@@ -409,9 +432,10 @@ void CompilationEngine::compileIf() {
             throw std::runtime_error("compileIf: (else) shoule be }");
 
         tokenizer_->advance();
+    } else {
+        writer_->writeLabel("IfEnd" + std::to_string(if_count_));
     }
 
-    writer_->writeLabel("IfEnd" + std::to_string(if_count_));
     ++if_count_;
 }
 
@@ -420,12 +444,41 @@ void CompilationEngine::compileExpression() {
         if (tokenizer_->symbol() == ";" || tokenizer_->symbol() == ")" || tokenizer_->symbol() == ",")
             return;
 
-    fprintf(fp_, "<expression>\n");
     bool first = true;
+    char prev_op = '\0';
     while (true) {
         if (!first)
             tokenizer_->advance();
         compileTerm();
+        switch (prev_op) {
+            case '+':
+                writer_->writeArithmetic(ADD);
+                break;
+            case '-':
+                writer_->writeArithmetic(SUB);
+                break;
+            case '*':
+                writer_->writeCall("Math.multiply", 2);
+                break;
+            case '/':
+                writer_->writeCall("Math.divide", 2);
+                break;
+            case '&':
+                writer_->writeArithmetic(AND);
+                break;
+            case '|':
+                writer_->writeArithmetic(OR);
+                break;
+            case '<':
+                writer_->writeArithmetic(LT);
+                break;
+            case '>':
+                writer_->writeArithmetic(GT);
+                break;
+            case '=':
+                writer_->writeArithmetic(EQ);
+                break;
+        }
         if (tokenizer_->token_type() == SYMBOL) {
             bool done = false;
             switch (tokenizer_->symbol().at(0)) {
@@ -438,7 +491,7 @@ void CompilationEngine::compileExpression() {
                 case '<':
                 case '>':
                 case '=':
-                    fprintf(fp_, "<symbol>%s</symbol>\n", tokenizer_->symbol().c_str());
+                    prev_op = tokenizer_->symbol().c_str()[0];
                     break;
                 default:
                     done = true;
@@ -451,34 +504,49 @@ void CompilationEngine::compileExpression() {
         }
         first = false;
     }
-    fprintf(fp_, "</expression>\n");
 }
 
 void CompilationEngine::compileTerm() {
     // value
-    if (tokenizer_->token_type() == SYMBOL && (tokenizer_->symbol() == ";" || tokenizer_->symbol() == ")" || tokenizer_->symbol() == ","))
-        return;
+    if (tokenizer_->token_type() == SYMBOL)
+        if (tokenizer_->symbol() == ";" || tokenizer_->symbol() == ")" || tokenizer_->symbol() == ",")
+            return;
 
-    fprintf(fp_, "<term>\n");
     int tmp_token_type = tokenizer_->token_type();
 
     if (tmp_token_type == INT_CONST) {
-        fprintf(fp_, "<integerConstant>%d</integerConstant>\n", tokenizer_->int_val());
+        writer_->writePush(VM_CONST, tokenizer_->int_val());
         tokenizer_->advance();
     } else if (tmp_token_type == STRING_CONST) {
-        fprintf(fp_, "<stringConstant>%s</stringConstant>\n", tokenizer_->string_val().c_str());
+        std::string str = tokenizer_->string_val();
+        writer_->writePush(VM_CONST, str.size());
+        writer_->writeCall("String.new", 1);
+        writer_->writePop(VM_TEMP, 1);
+        for (int i = 0; i < str.size(); ++i) {
+            writer_->writePush(VM_TEMP, 1);
+            writer_->writePush(VM_CONST, str.at(i));
+            writer_->writeCall("String.appendChar", 2);
+            // drop returned value
+            writer_->writePop(VM_TEMP, 2);
+        }
+        writer_->writePush(VM_TEMP, 1);
         tokenizer_->advance();
     } else if (tmp_token_type == KEYWORD) {
         switch (tokenizer_->keyword()) {
             case TRUE:
+                writer_->writePush(VM_CONST, 0);
+                writer_->writeArithmetic(NEG);
+                break;
             case FALSE:
             case _NULL:
+                writer_->writePush(VM_CONST, 0);
+                break;
             case THIS:
+                writer_->writePush(VM_POINTER, 0);
                 break;
             default:
                 throw std::runtime_error("compileTerm: invalid keyword");
         }
-        fprintf(fp_, "<keywordConstant>%s</keywordConstant>\n", tokenizer_->keyword_as_string().c_str());
         tokenizer_->advance();
     } else if (tmp_token_type == IDENTIFIER) {
         std::string identifier = tokenizer_->identifier();
@@ -486,40 +554,46 @@ void CompilationEngine::compileTerm() {
         int token_type = tokenizer_->token_type();
         if (token_type == SYMBOL && tokenizer_->symbol() == "[") {
             // varName[expression]
-            fprintf(fp_, "<identifier>%s</identifier>\n", identifier.c_str());
-            fprintf(fp_, "<symbol>[</symbol>\n");
             tokenizer_->advance();
             compileExpression();
-            fprintf(fp_, "<symbol>]</symbol>\n");
             tokenizer_->advance();
+            writePushWithVar(identifier);
+            writer_->writeArithmetic(ADD);
+            writer_->writePop(VM_POINTER, 1);
+            writer_->writePush(VM_THAT, 0);
         } else if (token_type == SYMBOL && (tokenizer_->symbol() == "(" || tokenizer_->symbol() == ".")) {
             // subroutineCall
             compileSubroutineCall(identifier);
         } else {
             // varName
-            fprintf(fp_, "<identifier>%s</identifier>\n", identifier.c_str());
+            writePushWithVar(identifier);
         }
     } else if (tmp_token_type == SYMBOL) {
         if (tokenizer_->symbol() == "(") {
             // (expression)
-            fprintf(fp_, "<symbol>(</symbol>\n");
             tokenizer_->advance();
             compileExpression();
-            fprintf(fp_, "<symbol>)</symbol>\n");
             tokenizer_->advance();
         } else if (tokenizer_->symbol() == "-" || tokenizer_->symbol() == "~") {
             // unaryOp term
-            fprintf(fp_, "<symbol>%s</symbol>\n", tokenizer_->symbol().c_str());
             tokenizer_->advance();
             compileTerm();
+            switch (tokenizer_->symbol().c_str()[0]) {
+                case '-':
+                    writer_->writeArithmetic(NEG);
+                    break;
+                case '~':
+                    writer_->writeArithmetic(NOT);
+                    break;
+                default:
+                    throw std::runtime_error("compileTerm: invalid unary op");
+            }
         } else {
             throw std::runtime_error("compileTerm: should be - or ~");
         }
     } else {
         throw std::runtime_error("compileTerm: invalid");
     }
-
-    fprintf(fp_, "</term>\n");
 }
 
 int CompilationEngine::compileExpressionList() {
@@ -537,29 +611,41 @@ int CompilationEngine::compileExpressionList() {
 
 void CompilationEngine::compileSubroutineCall(std::string identifier) {
     int n_args = 1;
-    writer_->writePush(VM_THIS, 0);
+    std::string function_name;
 
     if (tokenizer_->symbol() == "(") {
         tokenizer_->advance();
-        n_args = compileExpressionList();
+        n_args += compileExpressionList();
+        writePushWithVar(identifier);
+        function_name = class_name_ + "." + identifier;
     } else if (tokenizer_->symbol() == ".") {
         tokenizer_->advance();
         if (tokenizer_->token_type() != IDENTIFIER)
             throw std::runtime_error("compileSubroutineCall: should be identifier");
-        identifier += ".";
-        identifier += tokenizer_->identifier();
+        int kind = table_->kindOf(identifier);
+        if (kind == TB_NONE) {
+            // Function call
+            function_name = identifier + "." + tokenizer_->identifier();
+            n_args = 0;
+        } else {
+            // Method call
+            std::string type = table_->typeOf(identifier);
+            function_name = type + "." + tokenizer_->identifier();
+            // set this pointer
+            writePushWithVar(identifier);
+        }
 
         tokenizer_->advance();
         if (tokenizer_->symbol() != "(")
             throw std::runtime_error("compileSubroutineCall: should be (");
 
         tokenizer_->advance();
-        n_args = compileExpressionList();
+        n_args += compileExpressionList();
     } else {
         throw std::runtime_error("compileSubroutineCall: invalid");
     }
 
-    writer_->writeCall(identifier, n_args);
+    writer_->writeCall(function_name, n_args);
 
     tokenizer_->advance();
 }

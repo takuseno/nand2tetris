@@ -34,6 +34,7 @@ private:
     SymbolTable *table_;
     FILE *fp_;
     void compileSubroutineCall(std::string identifier);
+    void writePushWithVar(std::string identifier);
     std::string class_name_;
     int while_count_ = 0;
     int if_count_ = 0;
