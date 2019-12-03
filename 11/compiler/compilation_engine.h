@@ -32,7 +32,6 @@ private:
     JackTokenizer *tokenizer_;
     VMWriter *writer_;
     SymbolTable *table_;
-    FILE *fp_;
     void compileSubroutineCall(std::string identifier);
     void writePushWithVar(std::string identifier);
     std::string class_name_;

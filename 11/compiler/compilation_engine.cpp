@@ -32,8 +32,6 @@ CompilationEngine::CompilationEngine(JackTokenizer *tokenizer, const char* path)
     tokenizer_ = tokenizer;
     writer_ = new VMWriter(path);
     table_ = new SymbolTable();
-    if ((fp_ = fopen(path, "w")) == NULL)
-        throw std::runtime_error("failed to open output file");
     while_count_ = 0;
     if_count_ = 0;
 }
@@ -615,8 +613,8 @@ void CompilationEngine::compileSubroutineCall(std::string identifier) {
 
     if (tokenizer_->symbol() == "(") {
         tokenizer_->advance();
-        n_args += compileExpressionList();
         writePushWithVar(identifier);
+        n_args += compileExpressionList();
         function_name = class_name_ + "." + identifier;
     } else if (tokenizer_->symbol() == ".") {
         tokenizer_->advance();
