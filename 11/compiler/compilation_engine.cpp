@@ -28,12 +28,10 @@ void CompilationEngine::writePushWithVar(std::string identifier) {
     }
 }
 
-CompilationEngine::CompilationEngine(JackTokenizer *tokenizer, const char* path) {
+CompilationEngine::CompilationEngine(JackTokenizer *tokenizer, const char* path) : while_count_(0), if_count_(0) {
     tokenizer_ = tokenizer;
     writer_ = new VMWriter(path);
     table_ = new SymbolTable();
-    while_count_ = 0;
-    if_count_ = 0;
 }
 
 void CompilationEngine::compileClass() {
