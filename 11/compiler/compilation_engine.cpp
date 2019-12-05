@@ -152,8 +152,10 @@ void CompilationEngine::compileSubroutine() {
                 int n_locals = table_->varCount(TB_VAR);
                 writer_->writeFunction(class_name_ + "." + subroutine_name, n_locals);
                 if (subroutine_type == CONSTRUCTOR) {
+                    // memory size
+                    writer_->writePush(VM_CONST, table_->varCount(TB_FIELD));
                     // memory allocation for constructor
-                    writer_->writeCall("Memory.alloc", table_->varCount(TB_FIELD));
+                    writer_->writeCall("Memory.alloc", 1);
                     // set allocated memory to THIS
                     writer_->writePop(VM_POINTER, 0);
                 } else if (subroutine_type == METHOD) {
