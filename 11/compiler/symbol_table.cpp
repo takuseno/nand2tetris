@@ -11,7 +11,22 @@ void SymbolTable::startSubroutine() {
 
 void SymbolTable::define(std::string name, std::string type, int kind) {
     struct symbol s = {name, type};
-    get_table(name)->push_back(s);
+    switch (kind) {
+        case TB_STATIC:
+            static_table_.push_back(s);
+            break;
+        case TB_FIELD:
+            field_table_.push_back(s);
+            break;
+        case TB_ARG:
+            arg_table_.push_back(s);
+            break;
+        case TB_VAR:
+            var_table_.push_back(s);
+            break;
+        default:
+            throw std::runtime_error("SymbolTable define: invalid kind");
+    }
 }
 
 int SymbolTable::varCount(int kind) {

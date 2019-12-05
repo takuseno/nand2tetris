@@ -2,6 +2,7 @@
 #include <vector>
 #include <exception>
 #include <stdexcept>
+#include <iostream>
 
 #define TB_STATIC 0
 #define TB_FIELD 1

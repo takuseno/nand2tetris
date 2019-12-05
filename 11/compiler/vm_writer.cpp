@@ -8,7 +8,7 @@ VMWriter::VMWriter(const char* path) {
 void VMWriter::writePush(int segment, int index) {
     switch (segment) {
         case VM_CONST:
-            fprintf(fp_, "push const %d\n", index);
+            fprintf(fp_, "push constant %d\n", index);
             break;
         case VM_ARG:
             fprintf(fp_, "push argument %d\n", index);
@@ -31,14 +31,15 @@ void VMWriter::writePush(int segment, int index) {
         case VM_TEMP:
             fprintf(fp_, "push temp %d\n", index);
             break;
+        default:
+            throw std::runtime_error("VMWriter writePush: invalid segment");
     }
-    throw std::runtime_error("VMWriter writePush: invalid segment");
 }
 
 void VMWriter::writePop(int segment, int index) {
     switch (segment) {
         case VM_CONST:
-            fprintf(fp_, "pop const %d\n", index);
+            fprintf(fp_, "pop constant %d\n", index);
             break;
         case VM_ARG:
             fprintf(fp_, "pop argument %d\n", index);
@@ -61,8 +62,9 @@ void VMWriter::writePop(int segment, int index) {
         case VM_TEMP:
             fprintf(fp_, "pop temp %d\n", index);
             break;
+        default:
+            throw std::runtime_error("VMWriter writePop: invalid segment");
     }
-    throw std::runtime_error("VMWriter writePop: invalid segment");
 }
 
 void VMWriter::writeArithmetic(int command) {
@@ -94,8 +96,9 @@ void VMWriter::writeArithmetic(int command) {
         case NOT:
             fprintf(fp_, "not\n");
             break;
+        default:
+            throw std::runtime_error("VMWriter writeArithmetic: invalid command");
     }
-    throw std::runtime_error("VMWriter writeArithmetic: invalid command");
 }
 
 void VMWriter::writeLabel(std::string label) {

@@ -156,7 +156,7 @@ void CompilationEngine::compileSubroutine() {
                     writer_->writeCall("Memory.alloc", table_->varCount(TB_FIELD));
                     // set allocated memory to THIS
                     writer_->writePop(VM_POINTER, 0);
-                } else {
+                } else if (subroutine_type == METHOD) {
                     // the first argument is THIS address
                     writer_->writePush(VM_ARG, 0);
                     // set pointer to THIS
@@ -228,7 +228,7 @@ void CompilationEngine::compileVarDec() {
         tokenizer_->advance();
         if (tokenizer_->token_type() == SYMBOL && tokenizer_->symbol() == ";")
             break;
-        else if (tokenizer_->symbol() == ",")
+        else if (tokenizer_->symbol() != ",")
             throw std::runtime_error("compileVarDec: should be ,");
     }
 }
@@ -303,8 +303,6 @@ void CompilationEngine::compileLet() {
         writer_->writePush(segment, index);
         // add index
         writer_->writeArithmetic(ADD);
-        // set address to temp
-        writer_->writePop(VM_TEMP, 0);
         is_array = true;
     }
 
@@ -320,8 +318,13 @@ void CompilationEngine::compileLet() {
     tokenizer_->advance();
 
     if (is_array) {
-        writer_->writePush(VM_TEMP, 0);
+        // prerve result
+        writer_->writePop(VM_TEMP, 0);
+        // set pointer address
         writer_->writePop(VM_POINTER, 1);
+        // restore result
+        writer_->writePush(VM_TEMP, 0);
+        // store result
         writer_->writePop(VM_THAT, 0);
     } else {
         writer_->writePop(segment, index);
@@ -339,7 +342,9 @@ void CompilationEngine::compileWhile() {
     tokenizer_->advance();
     compileExpression();
 
-    writer_->writeIf("WhileEnd" + std::to_string(while_count_));
+    writer_->writeIf("WhileContinue" + std::to_string(while_count_));
+    writer_->writeGoto("WhileEnd" + std::to_string(while_count_));
+    writer_->writeLabel("WhileContinue" + std::to_string(while_count_));
 
     // close bracket
     if (tokenizer_->symbol() != ")")
@@ -370,7 +375,7 @@ void CompilationEngine::compileReturn() {
     tokenizer_->advance();
 
     // void
-    if (tokenizer_->token_type() && tokenizer_->symbol() == ";")
+    if (tokenizer_->token_type() == SYMBOL && tokenizer_->symbol() == ";")
         writer_->writePush(VM_CONST, 0);
     else
         compileExpression();
@@ -396,7 +401,9 @@ void CompilationEngine::compileIf() {
     if (tokenizer_->symbol() != ")")
         throw std::runtime_error("compileIf: should be )");
 
-    writer_->writeIf("IfEnd" + std::to_string(if_count_));
+    writer_->writeIf("IfContinue" + std::to_string(if_count_));
+    writer_->writeGoto("IfEnd" + std::to_string(if_count_));
+    writer_->writeLabel("IfContinue" + std::to_string(if_count_));
 
     // open curly brace
     tokenizer_->advance();
@@ -572,9 +579,10 @@ void CompilationEngine::compileTerm() {
             tokenizer_->advance();
         } else if (tokenizer_->symbol() == "-" || tokenizer_->symbol() == "~") {
             // unaryOp term
+            char op = tokenizer_->symbol().c_str()[0];
             tokenizer_->advance();
             compileTerm();
-            switch (tokenizer_->symbol().c_str()[0]) {
+            switch (op) {
                 case '-':
                     writer_->writeArithmetic(NEG);
                     break;
@@ -611,7 +619,7 @@ void CompilationEngine::compileSubroutineCall(std::string identifier) {
 
     if (tokenizer_->symbol() == "(") {
         tokenizer_->advance();
-        writePushWithVar(identifier);
+        writer_->writePush(VM_POINTER, 0);
         n_args += compileExpressionList();
         function_name = class_name_ + "." + identifier;
     } else if (tokenizer_->symbol() == ".") {

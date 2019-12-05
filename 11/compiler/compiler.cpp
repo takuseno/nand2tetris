@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < paths.size(); ++i) {
         std::string name = extract_file_name(paths[i]);
         JackTokenizer tokenizer(paths[i].c_str());
-        CompilationEngine compilation_engine(&tokenizer, (name + ".xml").c_str());
+        CompilationEngine compilation_engine(&tokenizer, (name + ".vm").c_str());
         compilation_engine.compileClass();
     }
 

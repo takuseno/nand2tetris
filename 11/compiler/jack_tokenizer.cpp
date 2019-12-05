@@ -74,7 +74,7 @@ void JackTokenizer::advance() {
     char ch = ifs_.get();
     while (!ifs_.eof()) {
         char next_ch = ifs_.get();
-        if (ch == ' ' || ch == '\n' || ch == '\r') {
+        if (ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t') {
             ch = next_ch;
             continue;
         }
@@ -124,7 +124,7 @@ void JackTokenizer::advance() {
     } else { // keyword or identifier
         next_token_ += head_ch;
         char tmp;
-        while ((tmp = ifs_.get()) != ' ' && !is_symbol(tmp))
+        while ((tmp = ifs_.get()) != ' ' && tmp != '\t' && !is_symbol(tmp))
             next_token_ += tmp;
         ifs_.unget();
         if (is_keyword(next_token_) > -1)
