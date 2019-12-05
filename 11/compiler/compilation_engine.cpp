@@ -263,6 +263,9 @@ void CompilationEngine::compileDo() {
     tokenizer_->advance();
     compileSubroutineCall(identifier);
 
+    // drop returned value
+    writer_->writePop(VM_TEMP, 0);
+
     if (!(tokenizer_->token_type() == SYMBOL && tokenizer_->symbol() == ";"))
         throw std::runtime_error("compileDo: should be ;");
 
