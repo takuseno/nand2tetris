@@ -337,14 +337,16 @@ void CompilationEngine::compileWhile() {
     if (tokenizer_->symbol() != "(")
         throw std::runtime_error("compileWhile: should be (");
 
-    writer_->writeLabel("WhileStart" + std::to_string(while_count_));
+    int while_count = while_count_++;
+
+    writer_->writeLabel("WhileStart" + std::to_string(while_count));
 
     tokenizer_->advance();
     compileExpression();
 
-    writer_->writeIf("WhileContinue" + std::to_string(while_count_));
-    writer_->writeGoto("WhileEnd" + std::to_string(while_count_));
-    writer_->writeLabel("WhileContinue" + std::to_string(while_count_));
+    writer_->writeIf("WhileContinue" + std::to_string(while_count));
+    writer_->writeGoto("WhileEnd" + std::to_string(while_count));
+    writer_->writeLabel("WhileContinue" + std::to_string(while_count));
 
     // close bracket
     if (tokenizer_->symbol() != ")")
@@ -358,7 +360,7 @@ void CompilationEngine::compileWhile() {
     tokenizer_->advance();
     compileStatements();
 
-    writer_->writeGoto("WhileStart" + std::to_string(while_count_));
+    writer_->writeGoto("WhileStart" + std::to_string(while_count));
 
     // close curly brace
     if (tokenizer_->symbol() != "}")
@@ -366,9 +368,7 @@ void CompilationEngine::compileWhile() {
 
     tokenizer_->advance();
 
-    writer_->writeLabel("WhileEnd" + std::to_string(while_count_));
-
-    ++while_count_;
+    writer_->writeLabel("WhileEnd" + std::to_string(while_count));
 }
 
 void CompilationEngine::compileReturn() {
@@ -401,9 +401,10 @@ void CompilationEngine::compileIf() {
     if (tokenizer_->symbol() != ")")
         throw std::runtime_error("compileIf: should be )");
 
-    writer_->writeIf("IfContinue" + std::to_string(if_count_));
-    writer_->writeGoto("IfEnd" + std::to_string(if_count_));
-    writer_->writeLabel("IfContinue" + std::to_string(if_count_));
+    int if_count = if_count_++;
+    writer_->writeIf("IfContinue" + std::to_string(if_count));
+    writer_->writeGoto("IfEnd" + std::to_string(if_count));
+    writer_->writeLabel("IfContinue" + std::to_string(if_count));
 
     // open curly brace
     tokenizer_->advance();
@@ -425,7 +426,8 @@ void CompilationEngine::compileIf() {
         if (tokenizer_->symbol() != "{")
             throw std::runtime_error("compileIf: (else) should be {");
 
-        writer_->writeLabel("IfEnd" + std::to_string(if_count_));
+        writer_->writeGoto("ElseEnd" + std::to_string(if_count));
+        writer_->writeLabel("IfEnd" + std::to_string(if_count));
 
         tokenizer_->advance();
         compileStatements();
@@ -434,12 +436,12 @@ void CompilationEngine::compileIf() {
         if (tokenizer_->symbol() != "}")
             throw std::runtime_error("compileIf: (else) shoule be }");
 
+        writer_->writeLabel("ElseEnd" + std::to_string(if_count));
+
         tokenizer_->advance();
     } else {
-        writer_->writeLabel("IfEnd" + std::to_string(if_count_));
+        writer_->writeLabel("IfEnd" + std::to_string(if_count));
     }
-
-    ++if_count_;
 }
 
 void CompilationEngine::compileExpression() {
@@ -538,7 +540,7 @@ void CompilationEngine::compileTerm() {
         switch (tokenizer_->keyword()) {
             case TRUE:
                 writer_->writePush(VM_CONST, 0);
-                writer_->writeArithmetic(NEG);
+                writer_->writeArithmetic(NOT);
                 break;
             case FALSE:
             case _NULL:
