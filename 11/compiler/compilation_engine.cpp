@@ -8,14 +8,14 @@ bool is_type(int keyword) {
     else return false;
 }
 
-void CompilationEngine::writePushWithVar(std::string identifier) {
+void CompilationEngine::writePushWithVar(std::string identifier, int offset) {
     int index = table_->indexOf(identifier);
     switch (table_->kindOf(identifier)) {
         case TB_VAR:
             writer_->writePush(VM_LOCAL, index);
             break;
         case TB_ARG:
-            writer_->writePush(VM_ARG, index);
+            writer_->writePush(VM_ARG, index + offset);
             break;
         case TB_FIELD:
             writer_->writePush(VM_THIS, index);
@@ -28,7 +28,8 @@ void CompilationEngine::writePushWithVar(std::string identifier) {
     }
 }
 
-CompilationEngine::CompilationEngine(JackTokenizer *tokenizer, const char* path) : while_count_(0), if_count_(0) {
+CompilationEngine::CompilationEngine(JackTokenizer *tokenizer,
+                                     const char* path) : while_count_(0), if_count_(0), arg_offset_(0) {
     tokenizer_ = tokenizer;
     writer_ = new VMWriter(path);
     table_ = new SymbolTable();
@@ -159,12 +160,14 @@ void CompilationEngine::compileSubroutine() {
                     // set allocated memory to THIS
                     writer_->writePop(VM_POINTER, 0);
                 } else if (subroutine_type == METHOD) {
+                    arg_offset_ = 1;
                     // the first argument is THIS address
                     writer_->writePush(VM_ARG, 0);
                     // set pointer to THIS
                     writer_->writePop(VM_POINTER, 0);
                 }
                 compileStatements();
+                arg_offset_ = 0;
             }
         } else if (tokenizer_->token_type() == SYMBOL && tokenizer_->symbol() == "}") {
             break;
@@ -567,7 +570,7 @@ void CompilationEngine::compileTerm() {
             tokenizer_->advance();
             compileExpression();
             tokenizer_->advance();
-            writePushWithVar(identifier);
+            writePushWithVar(identifier, arg_offset_);
             writer_->writeArithmetic(ADD);
             writer_->writePop(VM_POINTER, 1);
             writer_->writePush(VM_THAT, 0);
@@ -576,7 +579,7 @@ void CompilationEngine::compileTerm() {
             compileSubroutineCall(identifier);
         } else {
             // varName
-            writePushWithVar(identifier);
+            writePushWithVar(identifier, arg_offset_);
         }
     } else if (tmp_token_type == SYMBOL) {
         if (tokenizer_->symbol() == "(") {
@@ -643,7 +646,7 @@ void CompilationEngine::compileSubroutineCall(std::string identifier) {
             std::string type = table_->typeOf(identifier);
             function_name = type + "." + tokenizer_->identifier();
             // set this pointer
-            writePushWithVar(identifier);
+            writePushWithVar(identifier, 0);
         }
 
         tokenizer_->advance();

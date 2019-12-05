@@ -33,8 +33,9 @@ private:
     VMWriter *writer_;
     SymbolTable *table_;
     void compileSubroutineCall(std::string identifier);
-    void writePushWithVar(std::string identifier);
+    void writePushWithVar(std::string identifier, int offset);
     std::string class_name_;
     int while_count_;
     int if_count_;
+    int arg_offset_;
 };
