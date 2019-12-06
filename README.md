@@ -1,4 +1,4 @@
-# nand_to_tetris
+# nand2tetris
 my study codes for "The Elements of Computing Systems".
 
 ## Section
@@ -16,4 +16,3 @@ Section names are translated from Japanese version by me.
 - [x] 10. Compiler 1
 - [x] 11. Compiler 2
 - [ ] 12. Operating System
-- [ ] 13. Beyond 
